@@ -1,3 +1,6 @@
+## Setup
+==================
+
 uv init
 
 uv venv .venv
@@ -6,4 +9,13 @@ uv venv .venv
 
 source .venv/bin/activate
 
-uv run main.py
+uv run uvicorn main:app --reload
+
+http://127.0.0.1:8000
+
+
+## Quick reference
+==================
+
+source .venv/bin/activate
+uv run uvicorn main:app --reload
