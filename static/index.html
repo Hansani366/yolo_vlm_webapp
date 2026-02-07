@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Smoke & Fire Detection</title>
+    <style>
+        body {
+            background: #111;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+
+        #container {
+            position: relative;
+            display: inline-block;
+        }
+
+        video,
+        canvas {
+            border: 2px solid #444;
+            border-radius: 10px;
+        }
+
+        #overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        h2 {
+            margin-top: 20px;
+        }
+    </style>
+
+
+</head>
+
+<body>
+    <h2>Smoke & Fire Detection</h2>
+
+
+    <div id="container">
+        <video id="video" width="640" height="480" autoplay muted></video>
+        <canvas id="overlay" width="640" height="480"></canvas>
+    </div>
+
+    <script>
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("overlay");
+        const ctx = canvas.getContext("2d");
+
+        // Start webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            });
+
+        // Create hidden canvas for sending frames
+        const sendCanvas = document.createElement("canvas");
+        const sendCtx = sendCanvas.getContext("2d");
+
+        async function detectFrame() {
+            if (video.videoWidth === 0) return;
+
+            sendCanvas.width = video.videoWidth;
+            sendCanvas.height = video.videoHeight;
+            sendCtx.drawImage(video, 0, 0);
+
+            sendCanvas.toBlob(async (blob) => {
+                const formData = new FormData();
+                formData.append("file", blob, "frame.jpg");
+
+                try {
+                    const res = await fetch("http://localhost:8000/detect", {
+                        method: "POST",
+                        body: formData
+                    });
+
+                    const data = await res.json();
+                    drawDetections(data.detections);
+                } catch (err) {
+                    console.error("Detection error:", err);
+                }
+            }, "image/jpeg");
+        }
+
+        function drawDetections(detections) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            detections.forEach(det => {
+                const [x1, y1, x2, y2] = det.box;
+
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                ctx.fillStyle = "red";
+                ctx.font = "18px Arial";
+                ctx.fillText(
+                    det.label + " " + (det.confidence * 100).toFixed(1) + "%",
+                    x1,
+                    y1 - 5
+                );
+            });
+        }
+
+        // Run detection every 500ms
+        setInterval(detectFrame, 500);
+    </script>
+
+</body>
+
+</html>
